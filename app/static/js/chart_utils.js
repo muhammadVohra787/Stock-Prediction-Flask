@@ -3,23 +3,57 @@ const currentDateP = document.getElementById('current_date');
 let initialDate = new Date(currentDateP.textContent); // Ensure it's initialized properly
 const nextDayBtn = document.getElementById('next-day');
 const prevDayBtn = document.getElementById('prev-day');
-[stockSelect, nextDayBtn, prevDayBtn].forEach(function (element) {
-    element.addEventListener('click', function () {
-        let selectedStockSymbol = stockSelect.value; // Get stock symbol from dropdown
+const spinner = document.getElementById("loadingSpinner");
+const hideDiv = document.getElementById("stockChartVisible");
 
-        // If the clicked element is a stock select dropdown, handle the logic for changing the stock symbol
-        if (element === stockSelect) {
-            selectedStockSymbol = this.value;
-        } else {
-            // For the day change buttons (nextDayBtn and prevDayBtn), calculate the new date
-            changeDay(element === nextDayBtn ? 1 : -1); // Pass 1 for next, -1 for prev
+function fetchStockData(text) {
+    // Show spinner
+    if (text === "pending") {
+        hideDiv.classList.add("hidden");
+        spinner.classList.remove("hidden");
+    } else {
+
+        hideDiv.classList.remove("hidden");
+        spinner.classList.add("hidden");
+        console.log("stopped")
+
+    }
+}
+
+async function runOnceOnLoad() {
+    console.log("This function ran once the page finished loading.");
+    await displayStock();
+
+    window.removeEventListener('load', runOnceOnLoad);
+  }
+  
+  // Attach the event listener to the window's 'load' event
+  window.addEventListener('load', runOnceOnLoad);
+
+// Add event listener to all required elements
+[nextDayBtn, prevDayBtn].forEach((element) => {
+    element.addEventListener('click', async function () { // Make function async
+        let selectedStockSymbol = stockSelect.value;
+
+        // Handle stock selection or date change
+        if (element !== stockSelect) {
+            changeDay(element === nextDayBtn ? 1 : -1);
         }
+        await displayStock();
+    });
+}
+);
+const displayStock= async ()=>{
+    fetchStockData("pending"); // Show spinner before request starts
+        
+    let selectedStockSymbol = stockSelect.value;
 
-        console.log('Selected stock symbol:', selectedStockSymbol);
-        console.log('Current date:', currentDateP.textContent);
+    console.log('Selected stock symbol:', selectedStockSymbol);
+    console.log('Current date:', currentDateP.textContent);
 
-        // Make an AJAX POST request to the Flask backend
-        fetch('/stock_selected', {
+    try {
+        // Make an AJAX request to Flask backend
+        const response = await fetch('/stock_selected', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -28,71 +62,72 @@ const prevDayBtn = document.getElementById('prev-day');
                 'stock_symbol': selectedStockSymbol,
                 'current_date': currentDateP.textContent
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            const stockData = Object.values(data.data).map(item => item['Close']); // Assuming 'Close' is the stock price
-            generateStockChart(stockData, data.stockName, data.stockSymbol, data.labels, data.color);
-        })
-        .catch((error) => {
-            console.error('Error sending data to server:', error);
         });
+
+        const data = await response.json();
+
+        const stockData = Object.values(data.data).map(item => item['Close']); // Extract 'Close' prices
+
+        // Await the chart generation before hiding the spinner
+        await generateStockChart(stockData, data.stockName, data.stockSymbol, data.labels, data.color);
+        fetchStockData("done"); // Hide spinner after everything completes
+
+    } catch (error) {
+        console.error('Error sending data to server:', error);
+    } finally {
+        
+    }
+}
+// Add event listener to all required elements
+[stockSelect].forEach((element) => {
+    element.addEventListener('change', async function () { // Make function async
+        let selectedStockSymbol = stockSelect.value;
+
+        // Handle stock selection or date change
+        if (element !== stockSelect) {
+            changeDay(element === nextDayBtn ? 1 : -1);
+        }
+        await displayStock();
     });
 });
 
-function pickRandomColorFromList() {
-    const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF']; // Example list of 5 colors (Red, Green, Blue, Yellow, Magenta)
-    const randomIndex = Math.floor(Math.random() * colors.length);
-    return colors[randomIndex];
-  }
-  let chartInstance = null;
-  let currentDayOffset = 0; 
-  
-  function generateStockChart(stockdata, stockName, stockSymbol,labels, color) {
-      const data = {
-          labels: labels,
-          datasets: [{
-              label: stockSymbol,
-              data: stockdata,
-              borderColor: color,
-              fill: false
-          }]
-      };
-  
-      const config = {
-          type: 'line',
-          data: data,
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                  title: {
-                      display: true,
-                      text: stockName
-                  }
-              },
-              scales: {
-                  x: {
-                      type: 'category',
-                      title: {
-                          display: true,
-                          text: 'Time'
-                      }
-                  }
-              }
-          }
-      };
-  
-      var ctx = document.getElementById('stockChart').getContext('2d');
-  
-      if (chartInstance) {
-          chartInstance.destroy();
-      }
-  
-      chartInstance = new Chart(ctx, config);
-  }
+function generateStockChart(stockData, stockName, stockSymbol, labels, color) {
+    return new Promise((resolve, reject) => {
+        try {
+            const ctx = document.getElementById("stockChart").getContext("2d");
 
-  const changeDay = (num) => {
+            // Destroy existing chart if it exists
+            if (window.stockChartInstance) {
+                window.stockChartInstance.destroy();
+            }
+
+            // Create new chart
+            window.stockChartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${stockSymbol} - ${stockName}`,
+                        data: stockData,
+                        borderColor: color,
+                        backgroundColor: color + "33", // Lighter color
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            console.log("promised resolved")
+
+            resolve(); // Resolve the promise when chart is generated
+        } catch (error) {
+            reject(error); // Reject if there's an error
+        }
+    });
+}
+const changeDay = (num) => {
     const currentDateStr = currentDateP.textContent;
     const [year, month, day] = currentDateStr.split('-').map(Number);
     const currentDate = new Date(year, month - 1, day); // Month is 0-indexed in JS
