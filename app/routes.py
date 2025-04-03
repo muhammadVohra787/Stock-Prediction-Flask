@@ -1,6 +1,6 @@
 # app/routes.py
 from flask import Blueprint
-from app.controllers.user_controller import home, add_user, get_users
+from app.controllers.user_controller import home, add_user, get_users, stock_selected
 
 main = Blueprint('main', __name__)
 
@@ -8,3 +8,4 @@ main = Blueprint('main', __name__)
 main.add_url_rule('/', 'home', home)
 main.add_url_rule('/register', 'register', add_user, methods=['POST'])
 main.add_url_rule('/get_users', 'get_users', get_users, methods=['GET'])
+main.add_url_rule('/stock_selected', 'stock_selected' ,stock_selected,methods=['POST'])
