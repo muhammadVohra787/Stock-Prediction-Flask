@@ -25,10 +25,10 @@ async function runOnceOnLoad() {
     await displayStock();
 
     window.removeEventListener('load', runOnceOnLoad);
-  }
-  
-  // Attach the event listener to the window's 'load' event
-  window.addEventListener('load', runOnceOnLoad);
+}
+
+// Attach the event listener to the window's 'load' event
+window.addEventListener('load', runOnceOnLoad);
 
 // Add event listener to all required elements
 [nextDayBtn, prevDayBtn].forEach((element) => {
@@ -43,9 +43,9 @@ async function runOnceOnLoad() {
     });
 }
 );
-const displayStock= async ()=>{
+const displayStock = async () => {
     fetchStockData("pending"); // Show spinner before request starts
-        
+
     let selectedStockSymbol = stockSelect.value;
 
     console.log('Selected stock symbol:', selectedStockSymbol);
@@ -65,17 +65,21 @@ const displayStock= async ()=>{
         });
 
         const data = await response.json();
+        console.log(data)
+        const stockData = Object.values(data.data)
+            .map(item => item['Close'])
+            .filter(value => !isNaN(value)); // Remove NaN values
 
-        const stockData = Object.values(data.data).map(item => item['Close']); // Extract 'Close' prices
+        const stockPred = Object.values(data.data).map(item => item['predictions']);
 
         // Await the chart generation before hiding the spinner
-        await generateStockChart(stockData, data.stockName, data.stockSymbol, data.labels, data.color);
+        await generateStockChart(stockData, data.stockName, data.stockSymbol, data.labels, data.color, stockPred);
         fetchStockData("done"); // Hide spinner after everything completes
 
     } catch (error) {
         console.error('Error sending data to server:', error);
     } finally {
-        
+
     }
 }
 // Add event listener to all required elements
@@ -91,8 +95,9 @@ const displayStock= async ()=>{
     });
 });
 
-function generateStockChart(stockData, stockName, stockSymbol, labels, color) {
+function generateStockChart(stockData, stockName, stockSymbol, labels, color, stockPred) {
     return new Promise((resolve, reject) => {
+      
         try {
             const ctx = document.getElementById("stockChart").getContext("2d");
 
@@ -106,20 +111,40 @@ function generateStockChart(stockData, stockName, stockSymbol, labels, color) {
                 type: "line",
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: `${stockSymbol} - ${stockName}`,
-                        data: stockData,
-                        borderColor: color,
-                        backgroundColor: color + "33", // Lighter color
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
+                    datasets: [
+                        {
+                            label: `${stockSymbol} - ${stockName} (Actual)`,
+                            data: stockData,
+                            borderColor: color,
+                            backgroundColor: color + "33",
+                            fill: true
+                        },
+                        {
+                            label: `${stockSymbol} - ${stockName} (Predicted)`,
+                            data: stockPred,
+                            borderColor:  "rgb(255, 99, 132)",
+                            backgroundColor: "rgb(255, 99, 132)" + "55",
+                            borderDash: [5, 5], // Optional: dashed line for predicted
+                            fill: false,
+                            borderWidth: 2,
+                            pointRadius: 3, 
+                        }
+                    ],
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        }
+                    }}
             });
-            console.log("promised resolved")
 
             resolve(); // Resolve the promise when chart is generated
         } catch (error) {
@@ -166,7 +191,7 @@ const changeDay = (num) => {
     const yesterday = new Date(today); // Create a copy of today's date
     yesterday.setDate(yesterday.getDate() - 1); // Subtract one day
     // Prevent going beyond today's date
-    if (num > 0 && newDate >= yesterday) {
+    if (num > 0 && newDate > yesterday) {
         console.log("Cannot go beyond today's date.");
         nextDayBtn.disabled = true;
     } else {
