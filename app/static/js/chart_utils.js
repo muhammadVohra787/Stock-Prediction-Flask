@@ -97,7 +97,7 @@ const displayStock = async () => {
 
 function generateStockChart(stockData, stockName, stockSymbol, labels, color, stockPred) {
     return new Promise((resolve, reject) => {
-      
+
         try {
             const ctx = document.getElementById("stockChart").getContext("2d");
 
@@ -105,7 +105,7 @@ function generateStockChart(stockData, stockName, stockSymbol, labels, color, st
             if (window.stockChartInstance) {
                 window.stockChartInstance.destroy();
             }
-
+            Chart.defaults.color = 'white';
             // Create new chart
             window.stockChartInstance = new Chart(ctx, {
                 type: "line",
@@ -121,30 +121,38 @@ function generateStockChart(stockData, stockName, stockSymbol, labels, color, st
                         },
                         {
                             label: `${stockSymbol} - ${stockName} (Predicted)`,
+
                             data: stockPred,
-                            borderColor:  "rgb(255, 99, 132)",
+                            borderColor: "rgb(255, 99, 132)",
                             backgroundColor: "rgb(255, 99, 132)" + "55",
                             borderDash: [5, 5], // Optional: dashed line for predicted
                             fill: false,
                             borderWidth: 2,
-                            pointRadius: 3, 
+                            pointRadius: 3,
                         }
-                    ],
-                    options: {
-                        responsive: false,
-                        maintainAspectRatio: true,
-                        interaction: {
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        tooltip: {
                             mode: 'index',
-                            intersect: false
+                            intersect: false,
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            backgroundColor: '#1e293b',
                         },
-                        plugins: {
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false
-                            }
-                        }
-                    }}
-            });
+                    },
+                }
+            }
+
+            );
 
             resolve(); // Resolve the promise when chart is generated
         } catch (error) {

@@ -9,41 +9,39 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gradient-to-r from-gray-900 to-gray-700 min-h-screen flex justify-center items-start py-8">
-
-    <div class="container w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg text-center">
-        <h1 class="text-2xl font-bold text-gray-800 mb-5">Stock Price Charts</h1>
+<body class="bg-[#010c2b] min-h-screen flex justify-center items-start py-8 text-gray-200">
+    <div class="container w-full max-w-4xl bg-[#010614] p-6 rounded-lg shadow-lg text-center">
+        <h1 class="text-2xl font-bold text-gray-100 mb-5">Stock Price Charts</h1>
 
         <div>
-            <label for="stockSelect" class="block text-gray-700 text-sm font-semibold mb-2">Choose a stock:</label>
+            <label for="stockSelect" class="block text-gray-300 text-sm font-semibold mb-2">Choose a stock:</label>
             <select id="stockSelect"
-                class="w-full p-2 border rounded-md text-gray-700 focus:ring-2 focus:ring-blue-500">
-                <option value="">--Select a stock--</option>
+                class="w-full p-2 border border-blue-900 bg-[#0a1b3d] rounded-md text-gray-100 focus:ring-2 focus:ring-blue-500">
+                <option value="" class="bg-[#0a1b3d]">--Select a stock--</option>
                 {% for symbol, name in stock_names.items() %}
-                <option value="{{ symbol }} - {{ name }}">{{ symbol }} - {{ name }}</option>
+                <option value="{{ symbol }} - {{ name }}" class="bg-[#0a1b3d]">{{ symbol }} - {{ name }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <div class="chart-container relative w-full bg-gray-100 mt-6">
+        <div class="chart-container relative w-full bg-[#0e1e42] mt-6 rounded-lg p-4 shadow-inner">
             <div id="loadingSpinner" class="hidden fixed inset-0 flex justify-center items-center z-50">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid"></div>
+                <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-400 border-solid"></div>
             </div>
-            
-            <div id="stockChartVisible" class="relative w-full h-full bg-gray-100 mt-5 rounded-md p-4 shadow-inner">
-                <p id="current_date" class="text-gray-600 font-medium">{{ current_date }}</p>
-                <!-- Chart canvas with responsive sizing -->
+
+            <div id="stockChartVisible" class="relative w-full h-full mt-5 rounded-md p-4 bg-[#0e1e42] shadow-inner">
+                <p id="current_date" class="text-gray-400 font-medium">{{ current_date }}</p>
                 <canvas id="stockChart" class="w-full h-[400px] md:h-[400px] min-h-[400px]"></canvas>
             </div>
         </div>
 
         <div class="navigation-buttons mt-6 flex justify-center gap-4">
             <button id="prev-day"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
+                class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-md transition w-32">
                 Previous
             </button>
             <button id="next-day" disabled
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
+                class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-md transition w-32">
                 Next
             </button>
         </div>
