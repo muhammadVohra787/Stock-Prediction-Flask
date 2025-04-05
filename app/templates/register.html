@@ -1,59 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>Register - StockAI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <h2 class="text-center my-5">Register for Stock Trading</h2>
+<body class="bg-[#0b1228] text-white">
+    {% include 'navbar.html' %}
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="bg-[#111e3e] p-8 shadow-md w-full max-w-md border border-gray-700">
+      <h2 class="text-2xl font-bold text-center mb-6">📝 Register for StockAI</h2>
 
-        <form action="/register" method="POST">
-            <!-- Full Name -->
-            <div class="mb-3">
-                <label for="full_name" class="form-label">Full Name</label>
-                <input type="text" id="full_name" name="full_name" class="form-control" required>
-            </div>
+      <form method="POST" action="/register" class="space-y-4">
+        <div>
+          <label>Full Name</label>
+          <input type="text" name="full_name" required class="w-full mt-1 p-2 bg-gray-800 border border-gray-600 text-white" />
+        </div>
 
-            <!-- Email -->
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" id="email" name="email" class="form-control" required>
-            </div>
+        <div>
+          <label>Email</label>
+          <input type="email" name="email" required class="w-full mt-1 p-2 bg-gray-800 border border-gray-600 text-white" />
+        </div>
 
-            <!-- Password -->
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" id="password" name="password" class="form-control" required>
-            </div>
+        <div>
+          <label>Password</label>
+          <input type="password" name="password" required class="w-full mt-1 p-2 bg-gray-800 border border-gray-600 text-white" />
+        </div>
 
-            <!-- Trading Amount Slider -->
-            <div class="mb-3">
-                <label for="amount" class="form-label">Starting Trading Amount (USD)</label>
-                <input type="range" class="form-range" id="amount" name="amount" min="1000" max="10000" step="1000" value="1000">
-                <span id="amount_value" class="form-text">1,000 USD</span>
-            </div>
+        <div>
+          <label>Initial Balance ($)</label>
+          <input type="number" name="amount" min="0" step="any" required class="w-full mt-1 p-2 bg-gray-800 border border-gray-600 text-white" />
+        </div>
 
-            <button type="submit" class="btn btn-primary w-100">Register</button>
-        </form>
+        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 transition">
+          Register
+        </button>
+      </form>
+
+      <p class="text-sm text-center mt-4 text-gray-400">
+        Already have an account?
+        <a href="/login" class="text-blue-400 hover:underline">Login</a>
+      </p>
     </div>
-
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-
-    <!-- JavaScript to update slider value dynamically -->
-    <script>
-        const amountSlider = document.getElementById('amount');
-        const amountValue = document.getElementById('amount_value');
-
-        // Update the displayed value when the slider is moved
-        amountSlider.addEventListener('input', function() {
-            amountValue.textContent = `${amountSlider.value} USD`;
-        });
-    </script>
+  </div>
 </body>
 </html>
