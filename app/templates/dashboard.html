@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,155 +8,159 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-[#010c2b] min-h-screen flex justify-center items-start py-8 text-gray-200">
+
+<body class="bg-[#010c2b] text-gray-200 font-sans min-h-screen mt-14">
     {% include 'navbar.html' %}
-<!-- Dashboard Main Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-10">
-    <!-- Chart Section -->
-    <div class="container w-full max-w-4xl bg-[#010c2b] p-6 shadow-lg text-center">
-        <h1 class="text-2xl font-bold text-gray-100 mb-5">Stock Price Charts</h1>
-        <div>
-            <label for="stockSelect" class="block text-gray-300 text-sm font-semibold mb-2">Choose a stock:</label>
+
+    <div class="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <!-- Chart Section -->
+         
+        <section class="bg-[#0a1b3d] rounded-xl p-6 shadow-lg lg:col-span-3">
+            <h1 class="text-2xl font-bold mb-6 text-center">📉 Stock Price Charts</h1>
+            <p id="current_date" class="text-gray-400 font-medium">{{ current_date }}</p>
+            <label for="stockSelect" class="block text-sm font-medium mb-2 text-gray-300">Choose a stock:</label>
             <select id="stockSelect"
-                class="w-full p-2 border border-blue-900 bg-[#0a1b3d] text-gray-100 focus:ring-2 focus:ring-blue-500">
-                <option value="" class="bg-[#0a1b3d]">--Select a stock--</option>
+                class="w-full p-2 rounded-md bg-[#0e1e42] text-white border border-blue-900 focus:ring-2 focus:ring-blue-500 mb-6">
+                <option value="">-- Select a stock --</option>
                 {% for symbol, name in stock_names.items() %}
-                <option value="{{ symbol }} - {{ name }}" class="bg-[#0a1b3d]">{{ symbol }} - {{ name }}</option>
+                <option value="{{ symbol }} - {{ name }}">{{ symbol }} - {{ name }}</option>
                 {% endfor %}
             </select>
-        </div>
-        <div class="chart-container relative w-full bg-[#0e1e42] mt-6 p-4 shadow-inner">
-            <div id="loadingSpinner" class="hidden fixed inset-0 flex justify-center items-center z-50">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-400 border-solid"></div>
-            </div>
-            <div id="stockChartVisible" class="relative w-full h-full mt-5 rounded-md p-4 bg-[#0e1e42] shadow-inner">
-                <p id="current_date" class="text-gray-400 font-medium">{{ current_date }}</p>
-                <canvas id="stockChart" class="w-full h-[400px] md:h-[400px] min-h-[400px]"></canvas>
-            </div>
-        </div>
-        <div class="navigation-buttons mt-6 flex justify-center gap-4">
-            <button id="prev-day"
-                class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 transition w-32">
-                Previous
-            </button>
-            <button id="next-day" disabled
-                class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 transition w-32">
-                Next
-            </button>
-        </div>
-    </div>
-    <!-- Trade Section -->
-<div class="flex flex-col gap-6">
-    <!-- Trade Card -->
-    <div class="bg-[#111e3e] p-6 shadow-lg border border-gray-700">
-        <h2 class="text-xl font-bold text-white mb-5 border-b border-gray-700 pb-2">📈 Trade Stock</h2>
-        <form id="buyForm" action="/buy_stock" method="POST" class="space-y-4">
-            <input type="hidden" id="buy_stock_symbol" name="stock_symbol">
-            <input type="hidden" id="buy_stock_name" name="stock_name">
-            <input type="hidden" id="buy_current_price" name="current_price">
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">Selected Stock</label>
-                <input id="selected_stock_display" class="w-full p-2 bg-gray-800 text-white border border-gray-600" readonly>
-            </div>
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">Quantity</label>
-                <input type="number" name="quantity" min="1" value="1" class="w-full p-2 bg-gray-900 text-white border border-gray-600" required>
-            </div>
-            <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 transition-all duration-150 ease-in-out">
-                💰 Buy Stock
-            </button>
-        </form>
-    </div>
-    <!-- Holdings Card -->
-    <div class="bg-[#111e3e] p-6 shadow-lg border border-gray-700">
-        <h2 class="text-xl font-bold text-white mb-5 border-b border-gray-700 pb-2">📊 My Holdings</h2>
-        <div id="holdingsTable" class="overflow-x-auto text-sm">
-            <table class="w-full text-left table-auto border-collapse border border-gray-700 text-gray-300">
-                <thead class="bg-[#1f2f50]">
-                    <tr>
-                        <th class="border border-gray-700 px-3 py-2">Stock</th>
-                        <th class="border border-gray-700 px-3 py-2">Qty</th>
-                        <th class="border border-gray-700 px-3 py-2">Buy $</th>
-                        <th class="border border-gray-700 px-3 py-2">Date</th>
-                        <th class="border border-gray-700 px-3 py-2">Sell</th>
-                    </tr>
-                </thead>
-                <tbody id="holdingsBody" class="bg-[#0c1a35]">
-                    <!-- rows populated by JS -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-</div>
+            <div class="chart-container relative w-full bg-[#0e1e42] mt-6 p-4 shadow-inner">
+                <div id="loadingSpinner" class="hidden fixed inset-0 flex justify-center items-center z-50">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-400 border-solid"></div>
+                </div>
+                <div id="stockChartVisible">
+                    <canvas id="stockChart" class="w-full h-64"></canvas>
+                </div>   
 
-    <script>
-        const defaultStockSymbol = "TSLA - Tesla, Inc. - #E31937";
-        const stockSelect1 = document.getElementById("stockSelect");
-        stockSelect1.value = defaultStockSymbol;
-    </script>
-    <script src="{{ url_for('static', filename='js/chart_utils.js') }}"></script>
-    <script>
-        const buyForm = document.getElementById("buyForm");
-    
-        // Update Buy form on stock change
-        stockSelect.addEventListener('change', () => {
-            const selectedValue = stockSelect.value;
-            const [symbol, name, color] = selectedValue.split(' - ');
-            document.getElementById("buy_stock_symbol").value = symbol;
-            document.getElementById("buy_stock_name").value = name;
-            document.getElementById("selected_stock_display").value = symbol + " - " + name;
-    
-            // Get latest close price from chart data
-            const closePrices = window.stockChartInstance?.data?.datasets[0]?.data;
-            const lastPrice = closePrices?.[closePrices.length - 1] || 250;
-            document.getElementById("buy_current_price").value = lastPrice;
-        });
-    
-        // Dynamically fetch holdings
-        async function loadHoldings() {
-            const userId = "{{ session['user_id'] if 'user_id' in session else '' }}";
-    
-            const response = await fetch(`/user_holdings/${userId}`);
-            const data = await response.json();
-    
-            const tableBody = document.getElementById("holdingsBody");
-            tableBody.innerHTML = "";
-    
-            data.forEach(holding => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td class="border border-gray-700 px-3 py-2">${holding.stock_symbol}</td>
-                    <td class="border border-gray-700 px-3 py-2">${holding.quantity}</td>
-                    <td class="border border-gray-700 px-3 py-2">$${holding.purchase_price.toFixed(2)}</td>
-                    <td class="border border-gray-700 px-3 py-2">${holding.purchase_date}</td>
-                    <td class="border border-gray-700 px-3 py-2">
-                        <form action="/sell_stock" method="POST" class="flex gap-1 items-center">
-                            <input type="hidden" name="holding_id" value="${holding._id}">
-                            <input type="hidden" name="current_price" value="${holding.purchase_price}">
-                            <input type="number" name="quantity" value="1" min="1" max="${holding.quantity}" class="w-16 bg-gray-800 p-1 text-white">
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1">Sell</button>
-                        </form>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-    
-        // Refresh holdings when Buy form is submitted
-        buyForm.addEventListener("submit", (e) => {
-            setTimeout(() => loadHoldings(), 1000); // Wait for server to update
-        });
-    
-        // On page load
-        window.addEventListener('load', () => {
-            if (userId) {
-                loadHoldings();
-            }
-            stockSelect.dispatchEvent(new Event('change'));
-        });
-    </script>
-    
-    
+
+            <div class="flex justify-center space-x-4 mt-6">
+                <button id="prev-day"
+                    class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Previous</button>
+                <button id="next-day" disabled
+                    class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Next</button>
+            </div>
+        </section>
+
+        <!-- Trade Section -->
+        <section class="space-y-8 lg:col-span-2">
+            <!-- Trade Card -->
+            <div class="bg-[#111e3e] p-6 rounded-xl shadow-lg border border-gray-700">
+                <h2 class="text-xl font-bold text-white mb-5 border-b border-gray-700 pb-2">💰 Trade Stock</h2>
+                <form id="buyForm" action="/buy_stock" method="POST" class="space-y-4">
+                    <input type="hidden" id="buy_stock_symbol" name="stock_symbol">
+                    <input type="hidden" id="buy_stock_name" name="stock_name">
+                    <input type="hidden" id="buy_current_price" name="current_price">
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Selected Stock</label>
+                        <input id="selected_stock_display" readonly
+                            class="w-full p-2 rounded-md bg-gray-800 border border-gray-600 text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Quantity</label>
+                        <input type="number" name="quantity" min="1" value="1" required
+                            class="w-full p-2 rounded-md bg-gray-900 border border-gray-600 text-white">
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded-md transition">Buy
+                        Stock</button>
+                </form>
+            </div>
+
+            <!-- Holdings Table -->
+            <div class="bg-[#111e3e] p-6 rounded-xl shadow-lg border border-gray-700">
+                <h2 class="text-xl font-bold text-white mb-5 border-b border-gray-700 pb-2">📊 My Holdings</h2>
+                <div class="overflow-x-auto text-sm">
+                    <table class="w-full text-left border-collapse border border-gray-700">
+                        <thead class="bg-[#1f2f50]">
+                            <tr>
+                                <th class="px-3 py-2 border border-gray-700">Stock</th>
+                                <th class="px-3 py-2 border border-gray-700">Qty</th>
+                                <th class="px-3 py-2 border border-gray-700">Buy $</th>
+                                <th class="px-3 py-2 border border-gray-700">Date</th>
+                                <th class="px-3 py-2 border border-gray-700">Sell</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdingsBody" class="bg-[#0c1a35]">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
 </body>
+
+<script>
+    const defaultStockSymbol = "TSLA - Tesla, Inc. - #E31937";
+    const stockSelect1 = document.getElementById("stockSelect");
+    stockSelect1.value = defaultStockSymbol;
+</script>
+<script src="{{ url_for('static', filename='js/chart_utils.js') }}"></script>
+<script>
+    const buyForm = document.getElementById("buyForm");
+
+    // Update Buy form on stock change
+    stockSelect.addEventListener('change', () => {
+        const selectedValue = stockSelect.value;
+        const [symbol, name, color] = selectedValue.split(' - ');
+        document.getElementById("buy_stock_symbol").value = symbol;
+        document.getElementById("buy_stock_name").value = name;
+        document.getElementById("selected_stock_display").value = symbol + " - " + name;
+
+        // Get latest close price from chart data
+        const closePrices = window.stockChartInstance?.data?.datasets[0]?.data;
+        const lastPrice = closePrices?.[closePrices.length - 1] || 250;
+        document.getElementById("buy_current_price").value = lastPrice;
+    });
+
+    // Dynamically fetch holdings
+    async function loadHoldings() {
+        const userId = "{{ session['user_id'] if 'user_id' in session else '' }}";
+
+        const response = await fetch(`/user_holdings/${userId}`);
+        const data = await response.json();
+
+        const tableBody = document.getElementById("holdingsBody");
+        tableBody.innerHTML = "";
+
+        data.forEach(holding => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td class="border border-gray-700 px-3 py-2">${holding.stock_symbol}</td>
+                <td class="border border-gray-700 px-3 py-2">${holding.quantity}</td>
+                <td class="border border-gray-700 px-3 py-2">$${holding.purchase_price.toFixed(2)}</td>
+                <td class="border border-gray-700 px-3 py-2">${holding.purchase_date}</td>
+                <td class="border border-gray-700 px-3 py-2">
+                <form action="/sell_stock" method="POST" class="flex gap-1 items-center">
+                    <input type="hidden" name="holding_id" value="${holding._id}">
+                    <input type="hidden" name="current_price" value="${holding.purchase_price}">
+                    <input type="number" name="quantity" value="1" min="1" max="${holding.quantity}" class="w-16 bg-gray-800 p-1 text-white">
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1">Sell</button>
+                </form>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Refresh holdings when Buy form is submitted
+    buyForm.addEventListener("submit", (e) => {
+        setTimeout(() => loadHoldings(), 1000); // Wait for server to update
+    });
+
+    // On page load
+    window.addEventListener('load', () => {
+        const userId = "{{ session['user_id'] if 'user_id' in session else '' }}";
+        if (userId) {
+            loadHoldings();
+        }
+        stockSelect.dispatchEvent(new Event('change'));
+    });
+</script>
+
 </html>

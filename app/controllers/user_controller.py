@@ -47,7 +47,7 @@ def home():
     if 'user_id' not in session:
         return redirect('/login')
     current_date = datetime.today().strftime('%Y-%m-%d')
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, userId=session.get('user_id'))
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
 
 def home_page():
     return render_template("home.html", now=datetime.now)
@@ -115,7 +115,6 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         data.index = data.index.tz_convert('America/New_York')
         data = data[data.index.date == pd.to_datetime(end_date).date()]
         labels = data.index.strftime('%I:%M %p')
-        print(data)
         if len(data) < 26 and len(data) != 0:
             last_data = data.iloc[-1:].drop(columns='predictions')
             pred_arr_last = np.array(last_data)
@@ -211,10 +210,12 @@ def buy_stock():
     })
 
     mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"amount": balance - total_cost}})
-    return redirect('/')
+    current_date = datetime.today().strftime('%Y-%m-%d')
+    print("rendered it back to dashboard")
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
 
 # ------------------ SELL STOCK ------------------
-
+ 
 def sell_stock():
     user_id = session.get('user_id')
     if not user_id:
@@ -223,7 +224,7 @@ def sell_stock():
     holding_id = request.form.get('holding_id')
     quantity_to_sell = int(request.form.get('quantity'))
     sell_price = float(request.form.get('current_price'))
-
+ 
     holding = mongo.db.holdings.find_one({"_id": ObjectId(holding_id)})
 
     if not holding or holding["user_id"] != ObjectId(user_id):
@@ -237,7 +238,9 @@ def sell_stock():
         mongo.db.holdings.update_one({"_id": ObjectId(holding_id)}, {"$inc": {"quantity": -quantity_to_sell}})
 
     mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"amount": total_earnings}})
-    return redirect('/')
+    current_date = datetime.today().strftime('%Y-%m-%d')
+    print("rendered it back to dashboard")
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
 
 # ------------------ GET HOLDINGS ------------------
 
