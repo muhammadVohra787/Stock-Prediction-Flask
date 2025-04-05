@@ -46,9 +46,8 @@ STOCK_NAMES = {
 def home():
     if 'user_id' not in session:
         return redirect('/login')
-
     current_date = datetime.today().strftime('%Y-%m-%d')
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, userId=session.get('user_id'))
 
 def home_page():
     return render_template("home.html", now=datetime.now)
@@ -116,8 +115,8 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         data.index = data.index.tz_convert('America/New_York')
         data = data[data.index.date == pd.to_datetime(end_date).date()]
         labels = data.index.strftime('%I:%M %p')
-
-        if len(data) < 26:
+        print(data)
+        if len(data) < 26 and len(data) != 0:
             last_data = data.iloc[-1:].drop(columns='predictions')
             pred_arr_last = np.array(last_data)
             prediction_next = model.predict(pred_arr_last)
