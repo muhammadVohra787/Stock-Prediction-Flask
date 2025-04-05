@@ -1,0 +1,38 @@
+<nav class="bg-[#0b1228] shadow-sm fixed top-0 left-0 right-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <script src="http://localhost:5000/livereload.js"></script>  
+      <!-- LEFT: Logo + Links -->
+      <div class="flex items-center space-x-6">
+        <div class="flex items-center space-x-3">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="StockAI Logo" class="h-7 w-7 rounded shadow">
+          <span class="text-white text-lg font-semibold">StockAI</span>
+        </div>
+  
+        <!-- Always show Home -->
+        <a href="/" class="text-gray-300 hover:text-white transition text-sm font-medium">Home</a>
+  
+        <!-- Show Dashboard when logged in -->
+        {% if 'user_id' in session %}
+          <a href="/dashboard" class="text-gray-300 hover:text-white transition text-sm font-medium">Dashboard</a>
+        {% endif %}
+      </div>
+  
+      <!-- RIGHT: Auth Buttons -->
+      <div class="flex space-x-4 items-center text-sm font-medium">
+        {% if 'user_id' in session %}
+          <a href="/logout" class="text-red-400 border border-red-500 px-3 py-1 rounded hover:bg-red-600 hover:text-white transition">
+            Logout
+          </a>
+        {% else %}
+          <a href="/login" class="text-white border border-gray-500 px-3 py-1 rounded hover:bg-gray-700 transition">
+            Login
+          </a>
+          <a href="/register" class="text-blue-400 border border-blue-500 px-3 py-1 rounded hover:bg-blue-600 hover:text-white transition">
+            Register
+          </a>
+        {% endif %}
+      </div>
+  
+    </div>
+  </nav>
+  

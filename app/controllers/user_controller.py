@@ -1,4 +1,4 @@
-from flask import jsonify, request, render_template
+from flask import jsonify, request, render_template, redirect, session
 from app import mongo
 import yfinance as yf
 from datetime import datetime, timedelta
@@ -6,34 +6,29 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
-import sys, os
+import sys
+from bson.objectid import ObjectId
 from ..model.train import train_and_save
-# Load the model
+
+# ------------------ Load Model ------------------
 
 def load_model():
     try:
-        model_path_save= './app/model/stock_price_model.joblib'
-        if (os.path.exists(model_path_save)):
-            print("model found, skipping training")
-        else:
-            #Training and saving model in app/model
-            print("training and saving model... Might take a moment")
+        model_path = './app/model/stock_price_model.joblib'
+        if not os.path.exists(model_path):
+            print("Training and saving model... Might take a moment")
             train_and_save()
-        # Load the trained model and scaler
-        model_path_load = './app/model/stock_price_model.joblib'
-        model = joblib.load(model_path_load)
-
-        print(model)
+        model = joblib.load(model_path)
         print("Model loaded successfully")
         return model
     except Exception as e:
         print("Error loading model:", e)
-        print("Current Working Directory:", os.getcwd())
-        return None, None
-
+        return None
 
 model = load_model()
-# Define stock names
+
+# ------------------ Constants ------------------
+
 STOCK_NAMES = {
     'TSLA': ('Tesla, Inc. - #E31937'),
     'AAPL': ('Apple Inc. - #A2AAAD'),
@@ -46,105 +41,85 @@ STOCK_NAMES = {
     'TSM': ('Taiwan Semiconductor Manufacturing Company Limited - #8B0000')
 }
 
-# Home route
+# ------------------ Home/Dashboard ------------------
+
 def home():
+    if 'user_id' not in session:
+        return redirect('/login')
     current_date = datetime.today().strftime('%Y-%m-%d')
     return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
 
-# Add user to MongoDB
+def home_page():
+    return render_template("home.html", now=datetime.now)
+
+# ------------------ User Management ------------------
+
 def add_user():
-    full_name = request.form.get('full_name')
-    email = request.form.get('email')
-    password = request.form.get('password')
-    amount = request.form.get('amount')
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        amount = request.form.get('amount')
 
-    if not all([full_name, email, password, amount]):
-        return jsonify({"message": "All fields are required!"}), 400
+        if not all([full_name, email, password, amount]):
+            return "All fields are required!", 400
 
-    user_data = {
-        "full_name": full_name,
-        "email": email,
-        "password": password,
-        "amount": amount
-    }
+        mongo.db.users.insert_one({
+            "full_name": full_name,
+            "email": email,
+            "password": password,
+            "amount": amount
+        })
 
-    mongo.db.users.insert_one(user_data)
-    return jsonify({"message": "User registered successfully!"}), 201
+        return redirect('/login')
 
-# Get all users from MongoDB
+    return render_template("register.html")
+
+
 def get_users():
     users = list(mongo.db.users.find({}))
     for user in users:
         user['_id'] = str(user['_id'])
     return jsonify(users)
 
-# Get the day before today's date, adjusting for weekends
+# ------------------ Stock Logic ------------------
+
 def get_day_before(today):
     end_date = datetime.strptime(today, '%Y-%m-%d').date()
     day_before = end_date - timedelta(days=1)
-
-    # Adjust for weekends (Saturday -> Monday, Sunday -> Friday)
-    if day_before.weekday() == 6:  # Sunday
-        return day_before - timedelta(days=2)  # Return Friday
-    elif day_before.weekday() == 5:  # Saturday
-        return day_before + timedelta(days=2)  # Return Monday
+    if day_before.weekday() == 6:
+        return day_before - timedelta(days=2)
+    elif day_before.weekday() == 5:
+        return day_before + timedelta(days=2)
     return day_before
 
 def fetch_stock_data(ticker, start_date, end_date, color):
-    print(f'Start Date: {start_date} - End Date: {end_date}')
-    
-    # Ticker values model was trained on
     get_ticker = {'AAPL': 0, 'AMZN': 1, 'GOOG': 2, 'META': 3, 'MSFT': 4, 'NFLX': 5, 'NVDA': 6, 'TSLA': 7, 'TSM': 8}
-    
-    #feature list of model when sending data to model makesure this matches!
-    feature_list = ['Close', 'High', 'Low', 'Open', 'Volume', 'ticker', 'day_of_week',
-       'hour_of_day', 'month', 'year', 'quarter', 'days_since_start']
     try:
-        # Download stock data
         data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1), interval='15m')
+        if data.empty: return None
+        if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
 
-        if data.empty:
-            return None
-
-        # Flatten multiindex columns if needed
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.droplevel(1)
-
-        # Feature engineering for model
         data['ticker'] = get_ticker[ticker.strip()]
-        data['day_of_week'] = data.index.dayofweek  # Monday=0, Sunday=6
-        data['hour_of_day'] = data.index.hour  # Hour from 0 to 23
-        data['month'] = data.index.month - 1  # 0 for Jan, 11 for Dec
-        data['year'] = data.index.year  # 2023, 2024
-        data['quarter'] = data.index.quarter  # 1, 2, 3, 4
-        data['days_since_start'] = (data.index - data.index[0]).days  # Days from start
-    
-            
-        predictions = model.predict(data)
-        
-        data['predictions'] = predictions
-        
-        # Ensure the index is in UTC first, then convert it to 'America/New_York' (or your target timezone)
+        data['day_of_week'] = data.index.dayofweek
+        data['hour_of_day'] = data.index.hour
+        data['month'] = data.index.month - 1
+        data['year'] = data.index.year
+        data['quarter'] = data.index.quarter
+        data['days_since_start'] = (data.index - data.index[0]).days
+
+        data['predictions'] = model.predict(data)
+
         if data.index.tz is None:
-            data.index = data.index.tz_localize('UTC')  # Localize to UTC if not already
-        data.index = data.index.tz_convert('America/New_York')  # Convert to New York time zone
-        
-        # Filter to keep only the data for the end date
+            data.index = data.index.tz_localize('UTC')
+        data.index = data.index.tz_convert('America/New_York')
         data = data[data.index.date == pd.to_datetime(end_date).date()]
-        
         labels = data.index.strftime('%I:%M %p')
-        
-        # Prediction block: If data length is less than 26, predict the next point
-        if len(data) < 26:
-            print("Condition met")
-            # If the data length is less than 26, predict the next point
-            last_data = data.iloc[-1:].drop(columns='predictions')  # Get the last data point
+        if len(data) < 26 and len(data) != 0:
+            last_data = data.iloc[-1:].drop(columns='predictions')
             pred_arr_last = np.array(last_data)
-            
-            prediction_next = model.predict(pred_arr_last)  # Predict the next value
-            
-            # Append the predicted point to the data
-            next_time = data.index[-1] + timedelta(minutes=15)  # Assuming the data is every 15 minutes
+            prediction_next = model.predict(pred_arr_last)
+            next_time = data.index[-1] + timedelta(minutes=15)
             next_data_point = pd.DataFrame({
                 'predictions': prediction_next,
                 'day_of_week': [last_data['day_of_week'].values[0]],
@@ -155,29 +130,19 @@ def fetch_stock_data(ticker, start_date, end_date, color):
                 'days_since_start': [last_data['days_since_start'].values[0] + 1],
                 'ticker': [last_data['ticker'].values[0]],
                 'Close': None,
-            }, index=[next_time])  # Ensuring correct DatetimeIndex here
+            }, index=[next_time])
 
-            # Append the new data to the original data (ensuring matching indices)
             data = pd.concat([data, next_data_point])
+            labels = np.append(labels, next_time.strftime('%I:%M %p'))
 
-            # Append the new label (next_time) to the labels
-            labels = np.append(labels, next_time.strftime('%I:%M %p'))  # Format next_time as label and add to labels
-            print(f"Updated labels: {labels}")  # Check the labels in the console
-
-        # Return updated data and labels
-        data_dict = data.to_dict(orient='index')
-        data_dict = {str(k): v for k, v in data_dict.items()}  # Convert index to string
-
-        return {'data': data_dict, 'labels': labels.tolist(), 'color': color}  # Convert labels to list if needed
+        data_dict = {str(k): v for k, v in data.to_dict(orient='index').items()}
+        return {'data': data_dict, 'labels': labels.tolist(), 'color': color}
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-        print(e)
+        print(exc_type, os.path.split(exc_tb.tb_frame.f_code.co_filename)[1], exc_tb.tb_lineno, e)
         return None
 
-# Stock selection and data fetching
 def stock_selected():
     if request.method != 'POST':
         return jsonify({'status': 'error', 'message': 'Invalid request method'}), 405
@@ -189,20 +154,14 @@ def stock_selected():
         return jsonify({'status': 'error', 'message': 'Missing inputs'}), 400
 
     try:
-        # Parse date and get start
         end_date = datetime.strptime(current_date_str, '%Y-%m-%d').date()
-        start_date = get_day_before(current_date_str)  # Ensure we get the previous day correctly
-
-        # Get parts from selected stock string
+        start_date = get_day_before(current_date_str)
         ticker, stock_name, color = selected_stock.split("-")
 
-        # Fetch stock data
         data = fetch_stock_data(ticker, start_date, end_date, color)
         if not data:
             return jsonify({'status': 'error', 'message': 'No data found'}), 400
 
-        # Skip the cutoff logic entirely for today
-        # (Just return the data as it is)
         return jsonify({
             'status': 'success',
             'message': 'Sending data',
@@ -211,12 +170,99 @@ def stock_selected():
             'data': data['data'],
             'labels': data['labels'],
             'color': data['color'],
-            'current_date_str':current_date_str
+            'current_date_str': current_date_str
         })
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-        print("Error in stock_selected:", str(e))
+        print(exc_type, os.path.split(exc_tb.tb_frame.f_code.co_filename)[1], exc_tb.tb_lineno, e)
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# ------------------ BUY STOCK ------------------
+
+def buy_stock():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+
+    stock_symbol = request.form.get('stock_symbol')
+    stock_name = request.form.get('stock_name')
+    current_price = float(request.form.get('current_price'))
+    quantity = int(request.form.get('quantity'))
+
+    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    total_cost = current_price * quantity
+    balance = float(user.get("amount", 0))
+
+    if total_cost > balance:
+        return jsonify({"message": "Insufficient funds"}), 400
+
+    mongo.db.holdings.insert_one({
+        "user_id": ObjectId(user_id),
+        "stock_symbol": stock_symbol,
+        "stock_name": stock_name,
+        "quantity": quantity,
+        "purchase_price": current_price,
+        "purchase_date": datetime.now().strftime('%Y-%m-%d')
+    })
+
+    mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"amount": balance - total_cost}})
+    current_date = datetime.today().strftime('%Y-%m-%d')
+    print("rendered it back to dashboard")
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
+
+# ------------------ SELL STOCK ------------------
+ 
+def sell_stock():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+
+    holding_id = request.form.get('holding_id')
+    quantity_to_sell = int(request.form.get('quantity'))
+    sell_price = float(request.form.get('current_price'))
+ 
+    holding = mongo.db.holdings.find_one({"_id": ObjectId(holding_id)})
+
+    if not holding or holding["user_id"] != ObjectId(user_id):
+        return jsonify({"message": "Holding not found"}), 404
+
+    total_earnings = sell_price * quantity_to_sell
+
+    if quantity_to_sell >= holding['quantity']:
+        mongo.db.holdings.delete_one({"_id": ObjectId(holding_id)})
+    else:
+        mongo.db.holdings.update_one({"_id": ObjectId(holding_id)}, {"$inc": {"quantity": -quantity_to_sell}})
+
+    mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"amount": total_earnings}})
+    current_date = datetime.today().strftime('%Y-%m-%d')
+    print("rendered it back to dashboard")
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
+
+# ------------------ GET HOLDINGS ------------------
+
+def get_holdings(user_id):
+    holdings = list(mongo.db.holdings.find({"user_id": ObjectId(user_id)}))
+    for h in holdings:
+        h['_id'] = str(h['_id'])
+    return jsonify(holdings)
+
+# ------------------ LOGIN / LOGOUT ------------------
+
+def login_user():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = mongo.db.users.find_one({"email": email, "password": password})
+        if user:
+            session['user_id'] = str(user['_id'])
+            return redirect('/')
+        return "Invalid credentials", 401
+    return render_template('login.html')
+
+def logout_user():
+    session.clear()
+    return redirect('/login')
