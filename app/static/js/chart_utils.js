@@ -160,60 +160,60 @@ function generateStockChart(stockData, stockName, stockSymbol, labels, color, st
         }
     });
 }
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Adjusted changeDay function to account for weekend restrictions
 const changeDay = (num) => {
+    console.log("Button clicked with num:", num);
+
     const currentDateStr = currentDateP.textContent;
     const [year, month, day] = currentDateStr.split('-').map(Number);
-    const currentDate = new Date(year, month - 1, day); // Month is 0-indexed in JS
-    currentDate.setHours(0, 0, 0, 0);
+    const currentDate = new Date(year, month - 1, day);
+    currentDate.setHours(0, 0, 0, 0); // Normalize time
 
-    // Create new date based on the current date and the change in days
-    const newDate = new Date(currentDate);
+    let newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + num);
 
-    // Check if the new day is a weekend (Saturday or Sunday) and adjust accordingly
-    const dayOfWeek = newDate.getDay(); // 0 is Sunday, 6 is Saturday
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    console.log(days[dayOfWeek], dayOfWeek);
-
     // Skip weekends
-    if (num > 0) { // Moving forward
-        if (dayOfWeek === 6) { // Saturday
-            console.log("Forward: Saturday found, moving to Monday");
-            newDate.setDate(newDate.getDate() + 2); // Move to Monday
-        } else if (dayOfWeek === 0) { // Sunday
-            console.log("Forward: Sunday found, moving to Monday");
-            newDate.setDate(newDate.getDate() + 1); // Move to Monday
+    const adjustForWeekend = (date, direction) => {
+        const day = date.getDay();
+        if (direction > 0) {
+            if (day === 6) date.setDate(date.getDate() + 2); // Saturday -> Monday
+            if (day === 0) date.setDate(date.getDate() + 1); // Sunday -> Monday
+        } else {
+            if (day === 0) date.setDate(date.getDate() - 2); // Sunday -> Friday
+            if (day === 6) date.setDate(date.getDate() - 1); // Saturday -> Friday
         }
-    } else if (num < 0) { // Moving backward
-        if (dayOfWeek === 0) { // Sunday
-            console.log("Backward: Sunday found, moving to Friday");
-            newDate.setDate(newDate.getDate() - 2); // Move to Friday
-        } else if (dayOfWeek === 6) { // Saturday
-            console.log("Backward: Saturday found, moving to Friday");
-            newDate.setDate(newDate.getDate() - 1); // Move to Friday
-        }
-    }
+        return date;
+    };
+
+    newDate = adjustForWeekend(newDate, num);
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today); // Create a copy of today's date
-    yesterday.setDate(yesterday.getDate() - 1); // Subtract one day
-    // Prevent going beyond today's date
-    if (num > 0 && newDate > yesterday) {
-        console.log("Cannot go beyond today's date.");
-        nextDayBtn.disabled = true;
-    } else {
-        nextDayBtn.disabled = false; // Enable the next button when valid
+    today.setHours(0, 0, 0, 0); // Normalize today's time
+
+    // Prevent navigating into the future
+    if (newDate > today) {
+        console.warn("Blocked: Attempt to view future data");
+        return;
     }
 
-    // Calculate difference from initial date and ensure we can't go back more than 5 days
-    const initialDateMidnight = new Date(initialDate);
-    initialDateMidnight.setHours(0, 0, 0, 0);
-
-    // Format the new date as YYYY-MM-DD
-    const [newYear, newMonth, newDay] = [newDate.getFullYear(), newDate.getMonth() + 1, newDate.getDate()];
-    const newDateStr = `${newYear}-${String(newMonth).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
-
-    // Update the displayed date
+    // Update the display
+    const newDateStr = formatDate(newDate);
     currentDateP.textContent = newDateStr;
+    console.log("Updated current date:", newDateStr);
+
+    // Check if "Next" should be disabled
+    const nextDate = adjustForWeekend(new Date(newDate.getTime() + 24 * 60 * 60 * 1000), 1);
+    if (nextDate > today) {
+        nextDayBtn.setAttribute('disabled', true);
+    } else {
+        nextDayBtn.removeAttribute('disabled');
+    }
 };

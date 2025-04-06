@@ -37,6 +37,15 @@ def train_and_save():
         data['quarter'] = data.index.quarter  # 1, 2, 3, 4
         data['days_since_start'] = (data.index - data.index[0]).days  # Days from start
         
+         # Check if the last date is a weekend (Saturday or Sunday)
+        last_date = data.index[-1]
+        if last_date.weekday() == 5:  # Saturday
+        # Adjust to Friday
+           data = data[data.index < last_date]
+        elif last_date.weekday() == 6:  # Sunday
+        # Adjust to Friday
+           data = data[data.index < last_date - pd.Timedelta(days=2)]
+
         # Define the target (next hour's closing price)
         data['target'] = data['Close'].shift(-1)
 
@@ -74,8 +83,6 @@ def train_and_save():
 
     print(f"Train Score: {train_score:.4f}")
     print(f"Test Score: {test_score:.4f}")
-
-
 
     cv_scores = cross_val_score(reg, X, y, cv=5)
     print(f"Cross-validation mean score: {np.mean(cv_scores):.4f}")

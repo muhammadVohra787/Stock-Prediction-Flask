@@ -1,7 +1,7 @@
 from flask import jsonify, request, render_template, redirect, session
 from app import mongo
 import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import pandas as pd
 import joblib
 import os
@@ -94,6 +94,7 @@ def get_day_before(today):
     return day_before
 
 def fetch_stock_data(ticker, start_date, end_date, color):
+    print(f"Fetching for {ticker} from {start_date} to {end_date}")
     get_ticker = {'AAPL': 0, 'AMZN': 1, 'GOOG': 2, 'META': 3, 'MSFT': 4, 'NFLX': 5, 'NVDA': 6, 'TSLA': 7, 'TSM': 8}
     try:
         data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1), interval='15m')
@@ -149,19 +150,41 @@ def stock_selected():
 
     selected_stock = request.form.get('stock_symbol')
     current_date_str = request.form.get('current_date')
-
+    print(f"Selected stock: {selected_stock}")
+    print(f"Current date: {current_date_str}")
     if not selected_stock or not current_date_str:
+        print("Missing input detected")
         return jsonify({'status': 'error', 'message': 'Missing inputs'}), 400
 
     try:
+        print("Parsing date")
         end_date = datetime.strptime(current_date_str, '%Y-%m-%d').date()
-        start_date = get_day_before(current_date_str)
+
+        # Adjust the end_date if it's on a weekend
+        if end_date.weekday() == 5:  # Saturday
+            end_date = end_date - timedelta(days=1)  # Set to Friday
+        elif end_date.weekday() == 6:  # Sunday
+            end_date = end_date - timedelta(days=2)  # Set to Friday
+
+        # Adjust the start_date (previous day logic)
+        if end_date >= date.today():  # If end_date is today or in the future
+            start_date = date.today() - timedelta(days=1)  # Set to yesterday for today's or future date
+        else:
+            start_date = end_date - timedelta(days=1)  # Otherwise, set it to the previous day for historical dates
+
+        print(f"Start Date: {start_date}")
+        print(f"End Date: {end_date}") 
+
+        print("Splitting selected stock")
         ticker, stock_name, color = selected_stock.split("-")
+        print(f"Ticker: {ticker.strip()}, Name: {stock_name.strip()}, Color: {color.strip()}")
 
         data = fetch_stock_data(ticker, start_date, end_date, color)
         if not data:
-            return jsonify({'status': 'error', 'message': 'No data found'}), 400
-
+           return jsonify({'status': 'error', 'message': f'No data found for {ticker} from {start_date} to {end_date}'}), 400
+        print("Fetched stock data:", data)
+        
+        print("Returning data")
         return jsonify({
             'status': 'success',
             'message': 'Sending data',
@@ -175,7 +198,7 @@ def stock_selected():
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
-        print(exc_type, os.path.split(exc_tb.tb_frame.f_code.co_filename)[1], exc_tb.tb_lineno, e)
+        print("Exception occurred:", exc_type, os.path.split(exc_tb.tb_frame.f_code.co_filename)[1], exc_tb.tb_lineno, e)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # ------------------ BUY STOCK ------------------

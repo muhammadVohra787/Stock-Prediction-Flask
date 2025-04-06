@@ -107,6 +107,10 @@
     // Update Buy form on stock change
     stockSelect.addEventListener('change', () => {
         const selectedValue = stockSelect.value;
+         if (!selectedValue) {
+        console.error("No stock selected");
+        return; // Exit early if no value is selected
+    }
         const [symbol, name, color] = selectedValue.split(' - ');
         document.getElementById("buy_stock_symbol").value = symbol;
         document.getElementById("buy_stock_name").value = name;
