@@ -12,9 +12,14 @@
 <body class="bg-[#010c2b] text-gray-200 font-sans min-h-screen mt-14">
     {% include 'navbar.html' %}
 
+<!-- Balance Section -->
+<div id="balance" class="bg-[#0a1b3d] rounded-xl p-6 shadow-lg mt-6 mx-4">
+    <h2 class="text-2xl font-bold mb-6 text-white">Available Balance: ${{ balance }}</h2>
+</div>
+
     <div class="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-5 gap-8">
         <!-- Chart Section -->
-         
+
         <section class="bg-[#0a1b3d] rounded-xl p-6 shadow-lg lg:col-span-3">
             <h1 class="text-2xl font-bold mb-6 text-center">📉 Stock Price Charts</h1>
             <p id="current_date" class="text-gray-400 font-medium">{{ current_date }}</p>
@@ -32,15 +37,15 @@
                 </div>
                 <div id="stockChartVisible">
                     <canvas id="stockChart" class="w-full h-64"></canvas>
-                </div>   
+                </div>
 
 
-            <div class="flex justify-center space-x-4 mt-6">
-                <button id="prev-day"
-                    class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Previous</button>
-                <button id="next-day" disabled
-                    class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Next</button>
-            </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="prev-day"
+                        class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Previous</button>
+                    <button id="next-day" disabled
+                        class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2 rounded-md transition">Next</button>
+                </div>
         </section>
 
         <!-- Trade Section -->
@@ -91,6 +96,7 @@
                     </table>
                 </div>
             </div>
+
         </section>
     </div>
 </body>
@@ -107,10 +113,10 @@
     // Update Buy form on stock change
     stockSelect.addEventListener('change', () => {
         const selectedValue = stockSelect.value;
-         if (!selectedValue) {
-        console.error("No stock selected");
-        return; // Exit early if no value is selected
-    }
+        if (!selectedValue) {
+            console.error("No stock selected");
+            return; // Exit early if no value is selected
+        }
         const [symbol, name, color] = selectedValue.split(' - ');
         document.getElementById("buy_stock_symbol").value = symbol;
         document.getElementById("buy_stock_name").value = name;
@@ -137,7 +143,7 @@
             row.innerHTML = `
                 <td class="border border-gray-700 px-3 py-2">${holding.stock_symbol}</td>
                 <td class="border border-gray-700 px-3 py-2">${holding.quantity}</td>
-                <td class="border border-gray-700 px-3 py-2">$${holding.purchase_price.toFixed(2)}</td>
+                <td class="border border-gray-700 px-3 py-2">$${(holding.purchase_price * holding.quantity).toFixed(2)}</td>
                 <td class="border border-gray-700 px-3 py-2">${holding.purchase_date}</td>
                 <td class="border border-gray-700 px-3 py-2">
                 <form action="/sell_stock" method="POST" class="flex gap-1 items-center">
@@ -165,6 +171,23 @@
         }
         stockSelect.dispatchEvent(new Event('change'));
     });
+</script>
+
+<script>
+    async function fetchBalance() {
+        try {
+            const response = await fetch('/balance');
+            const data = await response.json();
+            if (data.balance !== undefined) {
+                document.getElementById('balance').innerText = 'Available Balance: $' + data.balance.toFixed(2);
+            }
+        } catch (error) {
+            console.error('Error fetching balance:', error);
+        }
+    }
+
+    // Call this function when the page loads
+    window.onload = fetchBalance;
 </script>
 
 </html>

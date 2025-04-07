@@ -234,6 +234,7 @@ def buy_stock():
     if total_cost > balance:
         return jsonify({"message": "Insufficient funds"}), 400
 
+    # Add the stock holding
     mongo.db.holdings.insert_one({
         "user_id": ObjectId(user_id),
         "stock_symbol": stock_symbol,
@@ -243,10 +244,15 @@ def buy_stock():
         "purchase_date": datetime.now().strftime('%Y-%m-%d')
     })
 
-    mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"amount": balance - total_cost}})
+    # Update the user's balance
+    new_balance = balance - total_cost
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"amount": new_balance}}
+    )
+
     current_date = datetime.today().strftime('%Y-%m-%d')
-    print("rendered it back to dashboard")
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, balance=new_balance)
 
 # ------------------ SELL STOCK ------------------
  
@@ -258,7 +264,7 @@ def sell_stock():
     holding_id = request.form.get('holding_id')
     quantity_to_sell = int(request.form.get('quantity'))
     sell_price = float(request.form.get('current_price'))
- 
+
     holding = mongo.db.holdings.find_one({"_id": ObjectId(holding_id)})
 
     if not holding or holding["user_id"] != ObjectId(user_id):
@@ -269,12 +275,23 @@ def sell_stock():
     if quantity_to_sell >= holding['quantity']:
         mongo.db.holdings.delete_one({"_id": ObjectId(holding_id)})
     else:
-        mongo.db.holdings.update_one({"_id": ObjectId(holding_id)}, {"$inc": {"quantity": -quantity_to_sell}})
+        mongo.db.holdings.update_one(
+            {"_id": ObjectId(holding_id)},
+            {"$inc": {"quantity": -quantity_to_sell}}
+        )
 
-    mongo.db.users.update_one({"_id": ObjectId(user_id)}, {"$inc": {"amount": total_earnings}})
+    # Increase user balance
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"amount": total_earnings}}
+    )
+
+    # Fetch the updated balance
+    updated_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    balance = float(updated_user.get("amount", 0))
     current_date = datetime.today().strftime('%Y-%m-%d')
-    print("rendered it back to dashboard")
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
+
+    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, balance=balance)
 
 # ------------------ GET HOLDINGS ------------------
 
@@ -283,6 +300,20 @@ def get_holdings(user_id):
     for h in holdings:
         h['_id'] = str(h['_id'])
     return jsonify(holdings)
+
+# ------------------ GET BALANCE ------------------
+
+def get_balance():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    balance = float(user.get("amount", 0))
+    return jsonify({"balance": round(balance, 2)})
 
 # ------------------ LOGIN / LOGOUT ------------------
 
