@@ -41,12 +41,22 @@ STOCK_NAMES = {
     'TSM': ('Taiwan Semiconductor Manufacturing Company Limited - #8B0000')
 }
 
+def get_stock_display_date():
+    today = datetime.today()
+    if today.weekday() == 5:  # Saturday
+        return today - timedelta(days=1)
+    elif today.weekday() == 6:  # Sunday
+        return today - timedelta(days=2)
+    else:
+        return today
+    
 # ------------------ Home/Dashboard ------------------
 
 def home():
     if 'user_id' not in session:
         return redirect('/login')
-    current_date = datetime.today().strftime('%Y-%m-%d')
+    #current_date = datetime.today().strftime('%Y-%m-%d')
+    current_date = get_stock_display_date().strftime('%Y-%m-%d')
     return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date)
 
 def home_page():
