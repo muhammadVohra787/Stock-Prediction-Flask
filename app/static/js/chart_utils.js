@@ -172,27 +172,30 @@ function formatDate(date) {
 const changeDay = (num) => {
     console.log("Button clicked with num:", num);
 
+    // Extract the current date from the displayed text content and split it into year, month, and day
     const currentDateStr = currentDateP.textContent;
     const [year, month, day] = currentDateStr.split('-').map(Number);
     const currentDate = new Date(year, month - 1, day);
     currentDate.setHours(0, 0, 0, 0); // Normalize time
 
+    // Copy the current date and add the number of days (num) to move the date forward or backward
     let newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + num);
 
     // Skip weekends
     const adjustForWeekend = (date, direction) => {
         const day = date.getDay();
-        if (direction > 0) {
+        if (direction > 0) { // Moving forward in time
             if (day === 6) date.setDate(date.getDate() + 2); // Saturday -> Monday
             if (day === 0) date.setDate(date.getDate() + 1); // Sunday -> Monday
-        } else {
+        } else { // Moving backward in time
             if (day === 0) date.setDate(date.getDate() - 2); // Sunday -> Friday
             if (day === 6) date.setDate(date.getDate() - 1); // Saturday -> Friday
         }
         return date;
     };
 
+    // Adjust the new date for weekends based on the direction (forward or backward)
     newDate = adjustForWeekend(newDate, num);
 
     const today = new Date();

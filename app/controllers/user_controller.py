@@ -41,15 +41,7 @@ STOCK_NAMES = {
     'TSM': ('Taiwan Semiconductor Manufacturing Company Limited - #8B0000')
 }
 
-def get_stock_display_date():
-    today = datetime.today()
-    if today.weekday() == 5:  # Saturday
-        return today - timedelta(days=1)
-    elif today.weekday() == 6:  # Sunday
-        return today - timedelta(days=2)
-    else:
-        return today
-    
+
 # ------------------ Home/Dashboard ------------------
 
 def home():
@@ -94,6 +86,15 @@ def get_users():
 
 # ------------------ Stock Logic ------------------
 
+def get_stock_display_date():
+    today = datetime.today()
+    if today.weekday() == 5:  # Saturday
+        return today - timedelta(days=1)
+    elif today.weekday() == 6:  # Sunday
+        return today - timedelta(days=2)
+    else:
+        return today
+    
 def get_day_before(today):
     end_date = datetime.strptime(today, '%Y-%m-%d').date()
     day_before = end_date - timedelta(days=1)
