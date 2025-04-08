@@ -125,7 +125,6 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         if data.index.tz is None:
             data.index = data.index.tz_localize('UTC')
         data.index = data.index.tz_convert('America/New_York')
-        print(data.index)
         data = data[data.index.date == pd.to_datetime(end_date).date()]
         labels = data.index.strftime('%I:%M %p')
         if len(data) < 26 and len(data) != 0:
@@ -222,9 +221,13 @@ def buy_stock():
 
     stock_symbol = request.form.get('stock_symbol')
     stock_name = request.form.get('stock_name')
-    current_price = float(request.form.get('current_price'))
-    quantity = int(request.form.get('quantity'))
+    data = yf.download(stock_symbol,period='1d', interval='15m')
+    if data.empty: return None
+    if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
+    current_price = data['Close'].iloc[-1]
 
+    quantity = int(request.form.get('quantity'))
+ 
     user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
     if not user:
         return jsonify({"message": "User not found"}), 404
@@ -260,16 +263,19 @@ def sell_stock():
         return redirect('/login')
 
     holding_id = request.form.get('holding_id')
-    quantity_to_sell = int(request.form.get('quantity'))
-    sell_price = float(request.form.get('current_price'))
-
     holding = mongo.db.holdings.find_one({"_id": ObjectId(holding_id)})
 
     if not holding or holding["user_id"] != ObjectId(user_id):
         return jsonify({"message": "Holding not found"}), 404
+    
+    quantity_to_sell = int(request.form.get('quantity'))
+    stock_symbol = holding["stock_symbol"]
+    data = yf.download(stock_symbol,period='1d', interval='15m')
+    if data.empty: return None
+    if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
+    sell_price = data['Close'].iloc[-1]
 
     total_earnings = sell_price * quantity_to_sell
-
     if quantity_to_sell >= holding['quantity']:
         mongo.db.holdings.delete_one({"_id": ObjectId(holding_id)})
     else:
