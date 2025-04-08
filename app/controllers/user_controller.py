@@ -111,7 +111,7 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1), interval='15m')
         if data.empty: return None
         if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
-
+        print(len(data))
         data['ticker'] = get_ticker[ticker.strip()]
         data['day_of_week'] = data.index.dayofweek
         data['hour_of_day'] = data.index.hour
@@ -125,9 +125,11 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         if data.index.tz is None:
             data.index = data.index.tz_localize('UTC')
         data.index = data.index.tz_convert('America/New_York')
+        print(data.index)
         data = data[data.index.date == pd.to_datetime(end_date).date()]
         labels = data.index.strftime('%I:%M %p')
         if len(data) < 26 and len(data) != 0:
+            first_index= -1
             last_data = data.iloc[-1:].drop(columns='predictions')
             pred_arr_last = np.array(last_data)
             prediction_next = model.predict(pred_arr_last)
@@ -146,7 +148,7 @@ def fetch_stock_data(ticker, start_date, end_date, color):
 
             data = pd.concat([data, next_data_point])
             labels = np.append(labels, next_time.strftime('%I:%M %p'))
-
+        print(len(data))
         data_dict = {str(k): v for k, v in data.to_dict(orient='index').items()}
         return {'data': data_dict, 'labels': labels.tolist(), 'color': color}
 
@@ -193,7 +195,6 @@ def stock_selected():
         data = fetch_stock_data(ticker, start_date, end_date, color)
         if not data:
            return jsonify({'status': 'error', 'message': f'No data found for {ticker} from {start_date} to {end_date}'}), 400
-        print("Fetched stock data:", data)
         
         print("Returning data")
         return jsonify({
@@ -250,10 +251,7 @@ def buy_stock():
         {"_id": ObjectId(user_id)},
         {"$set": {"amount": new_balance}}
     )
-
-    current_date = datetime.today().strftime('%Y-%m-%d')
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, balance=new_balance)
-
+    return redirect('/dashboard')
 # ------------------ SELL STOCK ------------------
  
 def sell_stock():
@@ -285,13 +283,7 @@ def sell_stock():
         {"_id": ObjectId(user_id)},
         {"$inc": {"amount": total_earnings}}
     )
-
-    # Fetch the updated balance
-    updated_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-    balance = float(updated_user.get("amount", 0))
-    current_date = datetime.today().strftime('%Y-%m-%d')
-
-    return render_template("dashboard.html", stock_names=STOCK_NAMES, current_date=current_date, balance=balance)
+    return redirect('/dashboard')
 
 # ------------------ GET HOLDINGS ------------------
 

@@ -23,7 +23,22 @@ function fetchStockData(text) {
 async function runOnceOnLoad() {
     console.log("This function ran once the page finished loading.");
     await displayStock();
+    const selectedValue = stockSelect.value;
+    if (!selectedValue) {
+        console.error("No stock selected");
+        return; // Exit early if no value is selected
+    }
+    const [symbol, name, color] = selectedValue.split(' - ');
+    document.getElementById("buy_stock_symbol").value = symbol;
+    document.getElementById("buy_stock_name").value = name;
+    document.getElementById("selected_stock_display").value = symbol + " - " + name;
 
+    // Get latest close price from chart data
+    const closePrices = window.stockChartInstance?.data?.datasets[0]?.data;
+    console.log()
+    console.log("day changed", window.stockChartInstance?.data?.datasets[0])
+    const lastPrice = closePrices?.[closePrices.length - 1] || 250;
+    document.getElementById("buy_current_price").value = lastPrice;
     window.removeEventListener('load', runOnceOnLoad);
 }
 
@@ -33,13 +48,29 @@ window.addEventListener('load', runOnceOnLoad);
 // Add event listener to all required elements
 [nextDayBtn, prevDayBtn].forEach((element) => {
     element.addEventListener('click', async function () { // Make function async
-        let selectedStockSymbol = stockSelect.value;
-
         // Handle stock selection or date change
         if (element !== stockSelect) {
             changeDay(element === nextDayBtn ? 1 : -1);
         }
         await displayStock();
+        const selectedValue = stockSelect.value;
+        if (!selectedValue) {
+            console.error("No stock selected");
+            return; // Exit early if no value is selected
+        }
+        const [symbol, name, color] = selectedValue.split(' - ');
+        document.getElementById("buy_stock_symbol").value = symbol;
+        document.getElementById("buy_stock_name").value = name;
+        document.getElementById("selected_stock_display").value = symbol + " - " + name;
+
+        // Get latest close price from chart data
+        const closePrices = window.stockChartInstance?.data?.datasets[0]?.data;
+        console.log()
+        console.log("day changed", window.stockChartInstance?.data?.datasets[0])
+        const lastPrice = closePrices?.[closePrices.length - 1] || 250;
+        document.getElementById("buy_current_price").value = lastPrice;
+
+
     });
 }
 );
@@ -85,13 +116,28 @@ const displayStock = async () => {
 // Add event listener to all required elements
 [stockSelect].forEach((element) => {
     element.addEventListener('change', async function () { // Make function async
-        let selectedStockSymbol = stockSelect.value;
-
         // Handle stock selection or date change
         if (element !== stockSelect) {
             changeDay(element === nextDayBtn ? 1 : -1);
         }
         await displayStock();
+
+        const selectedValue = stockSelect.value;
+        if (!selectedValue) {
+            console.error("No stock selected");
+            return; // Exit early if no value is selected
+        }
+        const [symbol, name, color] = selectedValue.split(' - ');
+        document.getElementById("buy_stock_symbol").value = symbol;
+        document.getElementById("buy_stock_name").value = name;
+        document.getElementById("selected_stock_display").value = symbol + " - " + name;
+
+        // Get latest close price from chart data
+        const closePrices = window.stockChartInstance?.data?.datasets[0]?.data;
+        console.log()
+        console.log("day changed", window.stockChartInstance?.data?.datasets[0])
+        const lastPrice = closePrices?.[closePrices.length - 1] || 250;
+        document.getElementById("buy_current_price").value = lastPrice;
     });
 });
 
