@@ -79,9 +79,6 @@ const displayStock = async () => {
 
     let selectedStockSymbol = stockSelect.value;
 
-    console.log('Selected stock symbol:', selectedStockSymbol);
-    console.log('Current date:', currentDateP.textContent);
-
     try {
         // Make an AJAX request to Flask backend
         const response = await fetch('/stock_selected', {
