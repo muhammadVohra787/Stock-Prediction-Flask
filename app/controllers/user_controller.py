@@ -1,5 +1,5 @@
-from flask import jsonify, request, render_template, redirect, session
-from app import mongo
+from flask import jsonify, request, render_template, redirect, session, current_app
+from app import mongo, cache
 import yfinance as yf
 from datetime import datetime, timedelta, date
 import pandas as pd
@@ -125,14 +125,44 @@ def get_previous_trading_day(target_date):
     
     return target_date
 
+@cache.memoize(timeout=60 * 60 * 24)  # Cache for 24 hours
 def fetch_stock_data(ticker, start_date, end_date, color):
-    print(f"Fetching for {ticker} from {start_date} to {end_date}")
+    print(f"Processing request for {ticker} from {start_date} to {end_date}")
+    
+    # Convert string dates to datetime.date objects if they're not already
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    # Get today's date for comparison
+    today = date.today()
+    
+    # If either date is in the future, adjust to today
+    if end_date > today:
+        print(f"Adjusted end_date from {end_date} to {today}")
+        end_date = today
+    if start_date > today:
+        print(f"Adjusted start_date from {start_date} to {today}")
+        start_date = today
+    
+    # If start_date is after end_date after adjustments, make them the same
+    if start_date > end_date:
+        start_date = end_date
+    
+    print(f"Fetching data for {ticker} from {start_date} to {end_date}")
+    
     get_ticker = {'AAPL': 0, 'AMZN': 1, 'GOOG': 2, 'META': 3, 'MSFT': 4, 'NFLX': 5, 'NVDA': 6, 'TSLA': 7, 'TSM': 8}
     try:
         data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1), interval='15m')
-        if data.empty: return None
-        if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
-        print(len(data))
+        if data.empty: 
+            print(f"No data returned from yfinance for {ticker} from {start_date} to {end_date}")
+            return None
+            
+        if isinstance(data.columns, pd.MultiIndex): 
+            data.columns = data.columns.droplevel(1)
+            
+        print(f"Processing {len(data)} records for {ticker}")
         data['ticker'] = get_ticker[ticker.strip()]
         data['day_of_week'] = data.index.dayofweek
         data['hour_of_day'] = data.index.hour
@@ -141,13 +171,21 @@ def fetch_stock_data(ticker, start_date, end_date, color):
         data['quarter'] = data.index.quarter
         data['days_since_start'] = (data.index - data.index[0]).days
 
+        # Make predictions
         data['predictions'] = model.predict(data)
 
+        # Handle timezones
         if data.index.tz is None:
             data.index = data.index.tz_localize('UTC')
         data.index = data.index.tz_convert('America/New_York')
+        
+        # Filter for the end date only
         data = data[data.index.date == pd.to_datetime(end_date).date()]
+        
+        # Format labels
         labels = data.index.strftime('%I:%M %p')
+        
+        # Handle edge case for partial data
         if len(data) < 26 and len(data) != 0:
             first_index= -1
             last_data = data.iloc[-1:].drop(columns='predictions')

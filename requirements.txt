@@ -7,3 +7,4 @@ scikit-learn==1.6.1
 livereload==2.7.1
 gunicorn==23.0.0
 lru_cache==0.2.3
+Flask-Caching==2.1.0
