@@ -5,3 +5,4 @@ yfinance==0.2.55
 joblib==1.4.2
 scikit-learn==1.6.1
 livereload==2.7.1
+gunicorn==23.0.0

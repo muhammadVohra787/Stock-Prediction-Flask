@@ -1,3 +1,4 @@
+# For local development
 from app import create_app
 from livereload import Server
 import os
