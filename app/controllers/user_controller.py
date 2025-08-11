@@ -376,8 +376,8 @@ def login_user():
         user = mongo.db.users.find_one({"email": email, "password": password})
         if user:
             session['user_id'] = str(user['_id'])
-            return redirect('/')
-        return "Invalid credentials", 401
+            return redirect('/dashboard')
+        return render_template('login.html', error='Invalid email or password')
     return render_template('login.html')
 
 def logout_user():

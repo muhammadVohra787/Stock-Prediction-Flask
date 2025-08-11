@@ -26,6 +26,11 @@
                     Don’t have an account?
                     <a href="/register" class="text-blue-400 hover:underline">Register here</a>
                   </div>
+                  {% if error %}
+                  <div class="text-center mt-4 text-sm text-red-500">
+                    {{ error }}
+                  </div>
+                  {% endif %}
             </form>
         </div>
     </div>
