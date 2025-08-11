@@ -104,6 +104,28 @@ def get_day_before(today):
         return day_before + timedelta(days=2)
     return day_before
 
+def get_previous_trading_day(target_date):
+    """
+    Returns the most recent trading day before or on the given date.
+    Handles weekends and market holidays.
+    """
+    # Get today's date
+    today = date.today()
+    
+    # If the target date is in the future, use today as the end date
+    if target_date > today:
+        target_date = today
+    
+    # If it's a weekend, go back to Friday
+    if target_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        # Go back to Friday (4 = Friday, 5 = Saturday, so we subtract (weekday - 4) days)
+        target_date = target_date - timedelta(days=(target_date.weekday() - 4))
+    
+    # Here you might want to add additional checks for market holidays
+    # For now, we'll just return the date as we've handled weekends
+    
+    return target_date
+
 def fetch_stock_data(ticker, start_date, end_date, color):
     print(f"Fetching for {ticker} from {start_date} to {end_date}")
     get_ticker = {'AAPL': 0, 'AMZN': 1, 'GOOG': 2, 'META': 3, 'MSFT': 4, 'NFLX': 5, 'NVDA': 6, 'TSLA': 7, 'TSM': 8}
@@ -170,19 +192,14 @@ def stock_selected():
 
     try:
         print("Parsing date")
-        end_date = datetime.strptime(current_date_str, '%Y-%m-%d').date()
-
-        # Adjust the end_date if it's on a weekend
-        if end_date.weekday() == 5:  # Saturday
-            end_date = end_date - timedelta(days=1)  # Set to Friday
-        elif end_date.weekday() == 6:  # Sunday
-            end_date = end_date - timedelta(days=2)  # Set to Friday
-
-        # Adjust the start_date (previous day logic)
-        if end_date >= date.today():  # If end_date is today or in the future
-            start_date = date.today() - timedelta(days=1)  # Set to yesterday for today's or future date
-        else:
-            start_date = end_date - timedelta(days=1)  # Otherwise, set it to the previous day for historical dates
+        # First parse the input date
+        input_date = datetime.strptime(current_date_str, '%Y-%m-%d').date()
+        
+        # Get the most recent trading day (handles weekends and holidays)
+        end_date = get_previous_trading_day(input_date)
+        
+        # Get the trading day before that
+        start_date = get_previous_trading_day(end_date - timedelta(days=1))
 
         print(f"Start Date: {start_date}")
         print(f"End Date: {end_date}") 
