@@ -1,7 +1,7 @@
 from flask import jsonify, request, render_template, redirect, session
 from app import mongo
 import yfinance as yf
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time as datetime_time
 import pandas as pd
 import joblib
 import os
@@ -9,6 +9,8 @@ import numpy as np
 import sys
 from bson.objectid import ObjectId
 from ..model.train import train_and_save
+import time
+from functools import lru_cache
 
 # ------------------ Load Model ------------------
 
@@ -126,57 +128,77 @@ def get_previous_trading_day(target_date):
     
     return target_date
 
-def fetch_stock_data(ticker, start_date, end_date, color):
+def get_cache_ttl():
+    """
+    Returns the number of seconds until midnight (end of day)
+    """
+    now = datetime.now()
+    midnight = datetime.combine(now.date() + timedelta(days=1), datetime_time(0, 0))
+    delta = midnight - now
+    return int(delta.total_seconds())
+
+# Cache stock data until end of day
+@lru_cache(maxsize=32)
+def fetch_stock_data(ticker, start_date, end_date, color, retry_count=3, delay=2):
+    """
+    Fetch stock data with retry mechanism and rate limiting.
+    Data is cached until the end of the current day.
+    """
     print(f"Fetching for {ticker} from {start_date} to {end_date}")
-    get_ticker = {'AAPL': 0, 'AMZN': 1, 'GOOG': 2, 'META': 3, 'MSFT': 4, 'NFLX': 5, 'NVDA': 6, 'TSLA': 7, 'TSM': 8}
-    try:
-        data = yf.download(ticker, start=start_date, end=end_date + timedelta(days=1), interval='15m')
-        if data.empty: return None
-        if isinstance(data.columns, pd.MultiIndex): data.columns = data.columns.droplevel(1)
-        print(len(data))
-        data['ticker'] = get_ticker[ticker.strip()]
-        data['day_of_week'] = data.index.dayofweek
-        data['hour_of_day'] = data.index.hour
-        data['month'] = data.index.month - 1
-        data['year'] = data.index.year
-        data['quarter'] = data.index.quarter
-        data['days_since_start'] = (data.index - data.index[0]).days
-
-        data['predictions'] = model.predict(data)
-
-        if data.index.tz is None:
-            data.index = data.index.tz_localize('UTC')
-        data.index = data.index.tz_convert('America/New_York')
-        data = data[data.index.date == pd.to_datetime(end_date).date()]
-        labels = data.index.strftime('%I:%M %p')
-        if len(data) < 26 and len(data) != 0:
-            first_index= -1
-            last_data = data.iloc[-1:].drop(columns='predictions')
-            pred_arr_last = np.array(last_data)
-            prediction_next = model.predict(pred_arr_last)
-            next_time = data.index[-1] + timedelta(minutes=15)
-            next_data_point = pd.DataFrame({
-                'predictions': prediction_next,
-                'day_of_week': [last_data['day_of_week'].values[0]],
-                'hour_of_day': [last_data['hour_of_day'].values[0]],
-                'month': [last_data['month'].values[0]],
-                'year': [last_data['year'].values[0]],
-                'quarter': [last_data['quarter'].values[0]],
-                'days_since_start': [last_data['days_since_start'].values[0] + 1],
-                'ticker': [last_data['ticker'].values[0]],
-                'Close': None,
-            }, index=[next_time])
-
-            data = pd.concat([data, next_data_point])
-            labels = np.append(labels, next_time.strftime('%I:%M %p'))
-        print(len(data))
-        data_dict = {str(k): v for k, v in data.to_dict(orient='index').items()}
-        return {'data': data_dict, 'labels': labels.tolist(), 'color': color}
-
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        print(exc_type, os.path.split(exc_tb.tb_frame.f_code.co_filename)[1], exc_tb.tb_lineno, e)
-        return None
+    
+    # Generate a cache key that includes the date
+    cache_key = (ticker, str(start_date), str(end_date), color)
+    
+    # Check if we have a cached result
+    cached_result = fetch_stock_data.cache.get(cache_key, None)
+    if cached_result is not None:
+        print("Returning cached result")
+        return cached_result
+    
+    # If not in cache, fetch the data
+    for attempt in range(retry_count):
+        try:
+            # Add a small delay between retries
+            if attempt > 0:
+                time.sleep(delay * (2 ** attempt))  # Exponential backoff
+                
+            # Try to fetch data
+            data = yf.download(
+                ticker,
+                start=start_date,
+                end=end_date + timedelta(days=1),  # Include end date
+                progress=False,
+                show_errors=False,
+                threads=False  # Disable threading to reduce rate limiting
+            )
+            
+            if data.empty:
+                print(f"No data found for {ticker} from {start_date} to {end_date}")
+                return None
+                
+            # Process data
+            data = data.reset_index()
+            data = data[['Date', 'Close']]
+            data['Date'] = data['Date'].dt.strftime('%Y-%m-%d')
+            
+            # Cache the result until end of day
+            result = {
+                'data': [{'x': row['Date'], 'y': row['Close']} for _, row in data.iterrows()],
+                'labels': data['Date'].tolist(),
+                'color': color,
+                'cached_until': str(datetime.now() + timedelta(seconds=get_cache_ttl()))
+            }
+            
+            # Add to cache
+            fetch_stock_data.cache[cache_key] = result
+            
+            return result
+            
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt == retry_count - 1:
+                print(f"Failed to fetch data for {ticker} after {retry_count} attempts")
+                return None
 
 def stock_selected():
     if request.method != 'POST':
